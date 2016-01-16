@@ -13,12 +13,11 @@ import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 
 public class IPCount {
-	
 	//maper
 	public static class IPCountMapper extends Mapper<Object, Text, Text, IntWritable> {
 		private final static IntWritable one = new IntWritable(1);
 		private Text word = new Text();
-		
+
 		public void map(Object key, Text value, Context context){
 			String words [] = value.toString().split(" ");
 			try {

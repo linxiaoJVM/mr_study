@@ -18,7 +18,7 @@ import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 
 
 /**
- * 在IPCount中，输出的结果格式是：
+ * 在IPCount中，输出的结果结果默认是按key排序的，格式是：
  *  95.26.244.193   1
 	95.91.241.66    3
 	96.254.171.2    14
@@ -33,7 +33,7 @@ import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 	99.225.156.100  3
 	99.238.64.184   3
 	。。。。。
-	思路是按访问数量做为key，ip地址作为value，map处理后应该是这样的
+	思路是按访问数量做为key并降序排列，ip地址作为value，map处理后应该是这样的
 	14 ： <96.254.171.2>
 	4 ： <98.245.146.5>
 	3 ： <95.91.241.66，99.225.156.100，99.238.64.184>
@@ -44,16 +44,19 @@ import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 	99.225.156.100  3
 	99.238.64.184   3
  * @author linxiao
- *主要思路是自定义排序的主键类IntKeyDesc，让他倒排序
+ *主要思路是自定义排序的主键类IntWritableDesc，让他倒排序
  */
 public class IPCountDesc {
 	//maper
-	public static class IPCountMapperDesc extends Mapper<Object, Text, IntKeyDesc, Text> {
+	public static class IPCountMapperDesc extends Mapper<Object, Text, IntWritableDesc, Text> {
+		private Text word = new Text();
+
 		public void map(Object key, Text value, Context context){
 			String words [] = value.toString().split("\t");
 			System.out.println(value.toString()+" "+words[0]+" "+words[1]);
 			try {
-				context.write(new IntKeyDesc(new IntWritable(Integer.valueOf(words[1]))), new Text(words[0]));
+				word.set(words[0]);
+				context.write(new IntWritableDesc( Integer.valueOf(words[1])), word);
 			} catch (IOException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
@@ -65,14 +68,14 @@ public class IPCountDesc {
 	}
 	
 	//reduce
-	public static class IPCountReducerDesc extends Reducer<IntKeyDesc, Text, Text, IntKeyDesc> {
-		public void reduce(IntKeyDesc key, Iterable<Text> values, Context context) {
-			
+	public static class IPCountReducerDesc extends Reducer<IntWritableDesc, Text, Text, IntWritableDesc> {
+		public void reduce(IntWritableDesc key, Iterable<Text> values, Context context) {
+
 			try {
 				for(Text val : values) {
 					context.write(val, key);
 				}
-				
+
 			} catch (IOException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
@@ -82,59 +85,71 @@ public class IPCountDesc {
 			}
 		}
 	}
-	
-	public static class IntKeyDesc implements WritableComparable<IntKeyDesc> {
+	public static class IntWritableDesc implements WritableComparable<IntWritableDesc> {
+		private int value;
+		public IntWritableDesc(){}
+		public IntWritableDesc(int value) {this.value = value;}
 
-		private IntWritable key;
-		public IntKeyDesc() {
-			this.key = new IntWritable();
+		public void set(int value) {
+			this.value = value;
 		}
-		public IntKeyDesc(IntWritable key) {
-			this.key = key;
-		}
-		public IntWritable getKey() {
-			return this.key;
-		}
-		@Override
-		public void readFields(DataInput arg0) throws IOException {
-			this.key.readFields(arg0);
+		public int get() {
+			return this.value;
 		}
 
 		@Override
-		public void write(DataOutput arg0) throws IOException {
-			// TODO Auto-generated method stub
-			this.key.write(arg0);
+		public void write(DataOutput dataOutput) throws IOException {
+			dataOutput.writeInt(this.value);
 		}
 
 		@Override
-		public int compareTo(IntKeyDesc o) {
-			// TODO Auto-generated method stub
-			return -this.key.compareTo(o.getKey());
+		public void readFields(DataInput dataInput) throws IOException {
+			this.value = dataInput.readInt();
 		}
-		//如果不重写，输出结果是显示的当前对象IntKeyDesc的在堆中的地址
+
 		@Override
-	    public String toString() {
-	        return this.key.toString();
-	    }
-		
-		
+		public int compareTo(IntWritableDesc o) {
+			int thisValue = this.value;
+			int thatValue = o.value;
+			//return thisValue < thatValue ? -1 : (thisValue == thatValue?0:1);
+			return thisValue < thatValue ? 1 : (thisValue == thatValue?0:-1);
+		}
+		public boolean equals(Object o) {
+			if(!(o instanceof IntWritableDesc)) {
+				return false;
+			} else {
+				IntWritableDesc other = (IntWritableDesc)o;
+				return this.value == other.value;
+			}
+		}
+		public int hashCode() {
+			return this.value;
+		}
+		public String toString() {
+			return Integer.toString(this.value);
+		}
 	}
 	
 	public static void main(String [] args) throws Exception {
 		Configuration conf = new Configuration();
 		Job job = Job.getInstance(conf, "ip count desc");
-		
+//		conf.set("mapreduce.job.maps", "2");
+//		conf.set("mapreduce.job.reduces", "1");
+
 		job.setJarByClass(IPCountDesc.class);
 		
 		job.setMapperClass(IPCountMapperDesc.class);
 		job.setReducerClass(IPCountReducerDesc.class);
-		
-		job.setMapOutputKeyClass(IntKeyDesc.class);
+		//mapper 输出key的类型和value的类型
+		job.setMapOutputKeyClass(IntWritableDesc.class);
 		job.setMapOutputValueClass(Text.class);
+		//reduce 输出key的类型和value的类型
+		job.setOutputKeyClass(IntWritableDesc.class);
+		job.setOutputValueClass(Text.class);
 
-		
+//		job.setNumReduceTasks(0);
 		job.setOutputKeyClass(Text.class);
-		job.setOutputValueClass(IntKeyDesc.class);
+		job.setOutputValueClass(IntWritableDesc.class);
 		
 		FileInputFormat.addInputPath(job, new Path(args[0])); //数据输入目录
 		FileOutputFormat.setOutputPath(job, new Path(args[1]));//输出目录，运算结果保存的路径
