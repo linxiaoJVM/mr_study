@@ -5,6 +5,8 @@ package com.hadoop.chapter01;
  */
 public class App {
     public static void main(String args[]) {
+
+        System.out.print("aaa");
         System.out.print("hello world");
     }
 }
