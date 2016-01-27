@@ -66,6 +66,23 @@ public class IPCountDesc {
 			}
 		}
 	}
+
+	public static class IPCountDesMapperDesc extends Mapper<Text, IntWritable, IntWritableDesc, Text> {
+		private Text word = new Text();
+
+		public void map(Text key, IntWritable value, Context context){
+			try {
+				context.write(new IntWritableDesc(value.get()), key);
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			} catch (InterruptedException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}
+	}
+
 	
 	//reduce
 	public static class IPCountReducerDesc extends Reducer<IntWritableDesc, Text, Text, IntWritableDesc> {

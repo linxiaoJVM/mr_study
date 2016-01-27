@@ -43,7 +43,7 @@ public class IpCountAndCountDesc {
         job.setInputFormatClass(SequenceFileInputFormat.class);
         job.setOutputFormatClass(TextOutputFormat.class);
 
-        job.setMapperClass(IPCountDesc.IPCountMapperDesc.class);
+        job.setMapperClass(IPCountDesc.IPCountDesMapperDesc.class);
         job.setReducerClass(IPCountDesc.IPCountReducerDesc.class);
         //mapper 输出key的类型和value的类型
         job.setMapOutputKeyClass(IPCountDesc.IntWritableDesc.class);
