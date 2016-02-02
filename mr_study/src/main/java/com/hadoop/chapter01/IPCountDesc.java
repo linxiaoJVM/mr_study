@@ -20,29 +20,29 @@ import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 /**
  * 在IPCount中，输出的结果结果默认是按key排序的，格式是：
  *  95.26.244.193   1
-	95.91.241.66    3
-	96.254.171.2    14
-	98.245.146.5    4
-	99.225.156.100  3
-	99.238.64.184   3
-	。。。。。。。
-	现在需要按访问ip数量从大到小排列输入，如
-	96.254.171.2    14
-	98.245.146.5    4
-	95.91.241.66    3
-	99.225.156.100  3
-	99.238.64.184   3
-	。。。。。
-	思路是按访问数量做为key并降序排列，ip地址作为value，map处理后应该是这样的
-	14 ： <96.254.171.2>
-	4 ： <98.245.146.5>
-	3 ： <95.91.241.66，99.225.156.100，99.238.64.184>
-	reduce处理后变成如下格式：
-	96.254.171.2    14
-	98.245.146.5    4
-	95.91.241.66    3
-	99.225.156.100  3
-	99.238.64.184   3
+ 95.91.241.66    3
+ 96.254.171.2    14
+ 98.245.146.5    4
+ 99.225.156.100  3
+ 99.238.64.184   3
+ 。。。。。。。
+ 现在需要按访问ip数量从大到小排列输入，如
+ 96.254.171.2    14
+ 98.245.146.5    4
+ 95.91.241.66    3
+ 99.225.156.100  3
+ 99.238.64.184   3
+ 。。。。。
+ 思路是按访问数量做为key并降序排列，ip地址作为value，map处理后应该是这样的
+ 14 ： <96.254.171.2>
+ 4 ： <98.245.146.5>
+ 3 ： <95.91.241.66，99.225.156.100，99.238.64.184>
+ reduce处理后变成如下格式：
+ 96.254.171.2    14
+ 98.245.146.5    4
+ 95.91.241.66    3
+ 99.225.156.100  3
+ 99.238.64.184   3
  * @author linxiao
  *主要思路是自定义排序的主键类IntWritableDesc，让他倒排序
  */
@@ -83,7 +83,7 @@ public class IPCountDesc {
 		}
 	}
 
-	
+
 	//reduce
 	public static class IPCountReducerDesc extends Reducer<IntWritableDesc, Text, Text, IntWritableDesc> {
 		public void reduce(IntWritableDesc key, Iterable<Text> values, Context context) {
@@ -146,7 +146,7 @@ public class IPCountDesc {
 			return Integer.toString(this.value);
 		}
 	}
-	
+
 	public static void main(String [] args) throws Exception {
 		Configuration conf = new Configuration();
 		Job job = Job.getInstance(conf, "ip count desc");
@@ -167,13 +167,13 @@ public class IPCountDesc {
 //		job.setNumReduceTasks(0);
 		job.setOutputKeyClass(Text.class);
 		job.setOutputValueClass(IntWritableDesc.class);
-		
+
 		FileInputFormat.addInputPath(job, new Path(args[0])); //数据输入目录
 		FileOutputFormat.setOutputPath(job, new Path(args[1]));//输出目录，运算结果保存的路径
-		
+
 		System.exit(job.waitForCompletion(true) ? 0 : 1);
 
 	}
-	
+
 
 }
