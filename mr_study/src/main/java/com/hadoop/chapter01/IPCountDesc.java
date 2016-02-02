@@ -13,7 +13,10 @@ import org.apache.hadoop.io.WritableComparator;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.Mapper;
 import org.apache.hadoop.mapreduce.Reducer;
+import org.apache.hadoop.mapreduce.filecache.DistributedCache;
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
+import org.apache.hadoop.mapreduce.lib.input.MultipleInputs;
+import org.apache.hadoop.mapreduce.lib.input.TextInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 
 
@@ -154,6 +157,11 @@ public class IPCountDesc {
 //		conf.set("mapreduce.job.reduces", "1");
 
 		job.setJarByClass(IPCountDesc.class);
+//		DistributedCache.addFileToClassPath();
+//		job.addFileToClassPath(new Path(""));
+//		MultipleInputs.addInputPath(job, new Path(args[0]), TextInputFormat.class,IPCountMapperDesc.class);
+
+		job.addArchiveToClassPath(new Path(""));
 
 		job.setMapperClass(IPCountMapperDesc.class);
 		job.setReducerClass(IPCountReducerDesc.class);
