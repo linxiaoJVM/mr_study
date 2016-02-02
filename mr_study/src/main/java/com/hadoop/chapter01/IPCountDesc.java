@@ -154,7 +154,7 @@ public class IPCountDesc {
 //		conf.set("mapreduce.job.reduces", "1");
 
 		job.setJarByClass(IPCountDesc.class);
-		
+
 		job.setMapperClass(IPCountMapperDesc.class);
 		job.setReducerClass(IPCountReducerDesc.class);
 		//mapper 输出key的类型和value的类型
