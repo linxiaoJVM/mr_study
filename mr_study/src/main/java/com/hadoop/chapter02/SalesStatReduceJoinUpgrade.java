@@ -1,6 +1,7 @@
 package com.hadoop.chapter02;
 
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.*;
 import org.apache.hadoop.mapreduce.Job;
@@ -43,7 +44,11 @@ public class SalesStatReduceJoinUpgrade {
         private IntWritable one;
         private DoubleWritable two;
 
-        public TwoFieldKey(){}
+        //默认构造函数，不写会报空指针错误
+        public TwoFieldKey(){
+            this.one = new IntWritable();
+            this.two = new DoubleWritable();
+        }
         public TwoFieldKey(int one, double two) {
             this.one = new IntWritable(one);
             this.two = new DoubleWritable(two);
@@ -74,18 +79,6 @@ public class SalesStatReduceJoinUpgrade {
                 return false;
             }
         }
-
-        /**
-         * 自定义分区方法，按照TwoFieldKey中的one分区
-         */
-        public static class OnePartitioner extends Partitioner<TwoFieldKey, Text> {
-            @Override
-            public int getPartition(TwoFieldKey twoFieldKey, Text text, int numPartitions) {
-                return twoFieldKey.getOne() % numPartitions;
-            }
-        }
-
-
         @Override
         public void write(DataOutput dataOutput) throws IOException {
             this.one.write(dataOutput);
@@ -96,6 +89,16 @@ public class SalesStatReduceJoinUpgrade {
         public void readFields(DataInput dataInput) throws IOException {
             this.one.readFields(dataInput);
             this.two.readFields(dataInput);
+        }
+    }
+
+    /**
+     * 自定义分区方法，按照TwoFieldKey中的one分区
+     */
+    public static class OnePartitioner extends Partitioner<TwoFieldKey, Text> {
+        @Override
+        public int getPartition(TwoFieldKey twoFieldKey, Text text, int numPartitions) {
+            return twoFieldKey.getOne() % numPartitions;
         }
     }
 
@@ -118,6 +121,7 @@ public class SalesStatReduceJoinUpgrade {
     public static class NameMapper extends Mapper<Object, Text, TwoFieldKey, Text> {
         public void map(Object key, Text value, Context context){
             String words [] = value.toString().split("\t");
+//            System.out.println("user.txt "+words[0]+" "+words[1]);
             try {
                 context.write(new TwoFieldKey(Integer.valueOf(words[0]), -1), new Text(words[1]));
             } catch (IOException e) {
@@ -130,6 +134,7 @@ public class SalesStatReduceJoinUpgrade {
     public static class SalesMapper extends Mapper<Object, Text, TwoFieldKey, Text> {
         public void map(Object key, Text value, Context context){
             String words [] = value.toString().split("\t");
+//            System.out.println("sales.txt "+words[0]+" "+words[1]);
             try {
                 context.write(new TwoFieldKey(Integer.valueOf(words[0]), Double.valueOf(words[1])), new Text(words[1]));
             } catch (IOException e) {
@@ -140,7 +145,7 @@ public class SalesStatReduceJoinUpgrade {
         }
     }
 
-    public static class NameAndSaleReduceJoin extends Reducer<TwoFieldKey, Text, Text, Text> {
+    public static class NameAndSaleReduceJoinUp extends Reducer<TwoFieldKey, Text, Text, Text> {
         public void reduce(TwoFieldKey key, Iterable<Text> values, Context context) throws IOException, InterruptedException {
             Text name = null;
             for(Text val : values) {
@@ -160,7 +165,7 @@ public class SalesStatReduceJoinUpgrade {
 
         job.setJarByClass(SalesStatReduceJoinUpgrade.class);
         //指定reducer
-        job.setReducerClass(NameAndSaleReduceJoin.class);
+        job.setReducerClass(NameAndSaleReduceJoinUp.class);
 
         //设置map输出格式
         job.setMapOutputKeyClass(TwoFieldKey.class);
@@ -170,7 +175,7 @@ public class SalesStatReduceJoinUpgrade {
         job.setOutputKeyClass(Text.class);
         job.setOutputValueClass(Text.class);
 
-        job.setPartitionerClass(TwoFieldKey.OnePartitioner.class);
+        job.setPartitionerClass(OnePartitioner.class);
         //如果没有通过job.setSortComparatorClass设置key比较函数类，则使用key的实现的compareTo方法
 //        job.setSortComparatorClass();
         job.setGroupingComparatorClass(OneGroupingComparator.class);
@@ -179,7 +184,11 @@ public class SalesStatReduceJoinUpgrade {
         MultipleInputs.addInputPath(job, new Path(args[0]), TextInputFormat.class, NameMapper.class);
         MultipleInputs.addInputPath(job, new Path(args[1]), TextInputFormat.class, SalesMapper.class);
 
-        FileOutputFormat.setOutputPath(job, new Path(args[2]));
+        Path out_path = new  Path(args[2]);
+        FileSystem file = out_path.getFileSystem(conf);
+        file.delete(out_path, true);
+
+        FileOutputFormat.setOutputPath(job, out_path);
 
         System.exit(job.waitForCompletion(true) ? 0 : 1);
     }

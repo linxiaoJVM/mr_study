@@ -1,6 +1,7 @@
 package com.hadoop.chapter02;
 
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.DoubleWritable;
 import org.apache.hadoop.io.IntWritable;
@@ -42,6 +43,7 @@ public class SalesStatReduceJoin {
     public static class NamesMapper extends Mapper<Object, Text, IntWritable, Text> {
         public void map(Object key, Text value, Context context){
             String words [] = value.toString().split("\t");
+//            System.out.println("user.txt "+words[0]+" "+words[1]);
             try {
                 context.write(new IntWritable(Integer.valueOf(words[0])), new Text("name"+words[1]));
 
@@ -55,6 +57,7 @@ public class SalesStatReduceJoin {
     public static class SalesMapper extends Mapper<Object, Text, IntWritable, Text> {
         public void map(Object key, Text value, Context context){
             String words [] = value.toString().split("\t");
+//            System.out.println("sales.txt "+words[0]+" "+words[1]);
             try {
                 context.write(new IntWritable(Integer.valueOf(words[0])), new Text("sale"+words[1]));
             } catch (IOException e) {
@@ -102,9 +105,11 @@ public class SalesStatReduceJoin {
         //指定reducer
         job.setReducerClass(NameAndSaleReduceJoin.class);
 
-        //设置map输出格式
-//        job.setMapOutputKeyClass(IntWritable.class);
-//        job.setMapOutputValueClass(Text.class);
+        //设置map输出格式。默认是<Text, IntWritable>类型
+        //如果输出不是这种类型，需要明确指定，不然会报错
+        //Type mismatch in key from map: expected org.apache.hadoop.io.Text, received org.apache.hadoop.io.IntWritable
+        job.setMapOutputKeyClass(IntWritable.class);
+        job.setMapOutputValueClass(Text.class);
 
         //reducer输出格式
         job.setOutputKeyClass(Text.class);
@@ -114,7 +119,11 @@ public class SalesStatReduceJoin {
         MultipleInputs.addInputPath(job, new Path(args[0]), TextInputFormat.class, NamesMapper.class);
         MultipleInputs.addInputPath(job, new Path(args[1]), TextInputFormat.class, SalesMapper.class);
 
-        FileOutputFormat.setOutputPath(job, new Path(args[2]));
+        Path out_path = new  Path(args[2]);
+        FileSystem file = out_path.getFileSystem(conf);
+        file.delete(out_path, true);
+
+        FileOutputFormat.setOutputPath(job, out_path);
 
         System.exit(job.waitForCompletion(true) ? 0 : 1);
     }
